@@ -1,0 +1,4 @@
+[submodule "env"]
+	path = env
+	url = git@github.com:duckietown/gym-duckietown.git
+	branch = daffy
