@@ -50,6 +50,7 @@ class ResizeWrapper(gym.ObservationWrapper):
 
     def observation(self, observation):
         from PIL import Image
+
         shape = (self.shape[0], self.shape[1])
         return np.array(Image.fromarray(observation).resize(shape))
 
@@ -81,7 +82,7 @@ class ImgWrapper(gym.ObservationWrapper):
         )
 
     def observation(self, observation):
-        return observation.transpose(2, 0, 1)
+        return observation.transpose(2, 1, 0)
 
 
 class DtRewardWrapper(gym.RewardWrapper):

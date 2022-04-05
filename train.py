@@ -1,0 +1,24 @@
+from utils.env import launch_env
+from utils.wrappers import (
+    NormalizeWrapper,
+    ImgWrapper,
+    DtRewardWrapper,
+    ActionWrapper,
+    ResizeWrapper,
+)
+from dreamer.config import DreamerConfig
+import torch
+from dreamer.trainer import Trainer
+
+if __name__ == "__main__":
+    env = launch_env(map_name="loop_pedestrians")
+    env = ResizeWrapper(env)
+    # env = NormalizeWrapper(env)
+    env = ImgWrapper(env)  # to make the images from 120x160x3 into 3x120x160
+    env = ActionWrapper(env)
+    env = DtRewardWrapper(env)
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    config = DreamerConfig()
+    trainer = Trainer(env, device, config)
+
+    trainer.train()
