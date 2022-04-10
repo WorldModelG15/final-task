@@ -445,13 +445,13 @@ class Trainer:
             obs = self.env.reset()
             done = False
             total_reward = 0
-            frames = [Image.fromarray(obs)]
+            frames = [Image.fromarray(obs.transpose(2, 1, 0))]
 
             while not done:
                 action = policy(obs, training=False)
                 obs, reward, done, _ = self.env.step(action)
                 total_reward += reward
-                frames.append(Image.fromarray(obs))
+                frames.append(Image.fromarray(obs.transpose(2, 1, 0)))
 
             print("Total Reward:", total_reward)
             frames[0].save(
