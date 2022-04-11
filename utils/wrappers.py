@@ -48,8 +48,10 @@ class ResizeWrapper(gym.ObservationWrapper):
         )
         self.shape = shape
 
+    # (480,640,3) -> (120,160,3)
     def observation(self, observation):
         from PIL import Image
+
         shape = (self.shape[0], self.shape[1])
         return np.array(Image.fromarray(observation).resize(shape))
 
@@ -80,8 +82,9 @@ class ImgWrapper(gym.ObservationWrapper):
             dtype=self.observation_space.dtype,
         )
 
+    # (120,160,3) -> (3,120,160)
     def observation(self, observation):
-        return observation.transpose(2, 0, 1)
+        return observation.transpose(2, 1, 0)
 
 
 class DtRewardWrapper(gym.RewardWrapper):
@@ -107,3 +110,22 @@ class ActionWrapper(gym.ActionWrapper):
     def action(self, action):
         action_ = [action[0] * 0.8, action[1]]
         return action_
+
+
+# early stop learning
+class EarlyStopWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super(EarlyStopWrapper, self).__init__(env)
+        self.env = env
+        self.total_reward = 0
+
+    def step(self, action):
+        next_state, reward, done, info = self.env.step(action)
+        self.total_reward += reward
+        if self.total_reward > 5e4:
+            done = True
+        return next_state, reward, done, info
+
+    def reset(self):
+        self.total_reward = 0
+        return self.env.reset()
