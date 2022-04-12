@@ -74,7 +74,8 @@ class Trainer:
         if not os.path.exists(self.gif_dir):
             os.makedirs(self.gif_dir, exist_ok=True)
 
-        self.writer = SummaryWriter(self.log_dir)
+        if train:
+            self.writer = SummaryWriter(self.log_dir)
 
         # その他ハイパーパラメータ
         self.seed_episodes = config.seed_episodes  # 最初にランダム行動で探索するエピソード数
@@ -445,13 +446,13 @@ class Trainer:
             obs = self.env.reset()
             done = False
             total_reward = 0
-            frames = [Image.fromarray(obs.transpose(2, 1, 0))]
+            frames = [Image.fromarray(obs.transpose(1, 2, 0))]
 
             while not done:
                 action = policy(obs, training=False)
                 obs, reward, done, _ = self.env.step(action)
                 total_reward += reward
-                frames.append(Image.fromarray(obs.transpose(2, 1, 0)))
+                frames.append(Image.fromarray(obs.transpose(1, 2, 0)))
 
             print("Total Reward:", total_reward)
             frames[0].save(

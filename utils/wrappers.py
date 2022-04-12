@@ -52,7 +52,7 @@ class ResizeWrapper(gym.ObservationWrapper):
     def observation(self, observation):
         from PIL import Image
 
-        shape = (self.shape[0], self.shape[1])
+        shape = (self.shape[1], self.shape[0])
         return np.array(Image.fromarray(observation).resize(shape))
 
 
@@ -84,7 +84,7 @@ class ImgWrapper(gym.ObservationWrapper):
 
     # (120,160,3) -> (3,120,160)
     def observation(self, observation):
-        return observation.transpose(2, 1, 0)
+        return observation.transpose(2, 0, 1)
 
 
 class DtRewardWrapper(gym.RewardWrapper):
@@ -92,12 +92,14 @@ class DtRewardWrapper(gym.RewardWrapper):
         super(DtRewardWrapper, self).__init__(env)
 
     def reward(self, reward):
-        if reward == -1000:
-            reward = -10
-        elif reward > 0:
-            reward += 10
-        else:
-            reward += 4
+        # if reward == -1000:
+        #     reward = -10
+        # elif reward > 0:
+        #     reward += 10
+        # else:
+        #     reward += 4
+        if reward < 0:
+            reward = 0
 
         return reward
 
@@ -117,15 +119,18 @@ class EarlyStopWrapper(gym.Wrapper):
     def __init__(self, env):
         super(EarlyStopWrapper, self).__init__(env)
         self.env = env
+        self.total_steps = 0
         self.total_reward = 0
 
     def step(self, action):
         next_state, reward, done, info = self.env.step(action)
         self.total_reward += reward
-        if self.total_reward > 5e4:
+        self.total_steps += 1
+        if self.total_steps >= 3000:
             done = True
         return next_state, reward, done, info
 
     def reset(self):
+        self.total_steps = 0
         self.total_reward = 0
         return self.env.reset()
