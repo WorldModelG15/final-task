@@ -21,6 +21,6 @@ pybullet 環境で強化学習による経路計画と RSSM による危険状�
 ![compare_gif1](/gif/compare0.gif)
 ![compare_gif2](/gif/compare1.gif)
 ![compare_gif3](/gif/compare2.gif)
-![compare_gif4](/gif/compare6.gif)
-![compare_gif5](/gif/compare.gif)
+![compare_gif4](/gif/compare8.gif)
+![compare_gif5](/gif/compare9.gif)
 
