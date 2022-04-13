@@ -1,6 +1,8 @@
 from datetime import datetime
+from email import policy
 import time
 import os
+from cv2 import compare
 
 import numpy as np
 from PIL import Image
@@ -457,6 +459,65 @@ class Trainer:
             print("Total Reward:", total_reward)
             frames[0].save(
                 os.path.join(self.gif_dir, "test" + str(i) + ".gif"),
+                save_all=True,
+                append_images=frames[1:],
+                duration=40,
+            )
+
+    def compare_imagination(self, compare_count):
+        policy = Agent(self.encoder, self.rssm.transition, self.action_model)
+
+        for i in range(compare_count):
+            obs = self.env.reset()
+
+            for _ in range(np.random.randint(5, 100)):
+                action = policy(obs, training=False)
+                obs, _, _, _ = self.env.step(action)
+
+            preprocessed_obs = torch.as_tensor(
+                preprocess_obs(obs), device=self.device
+            ).unsqueeze(0)
+
+            with torch.no_grad():
+                embedded_obs = self.encoder(preprocessed_obs)
+
+            rnn_hidden = policy.rnn_hidden
+            state = self.rssm.transition.posterior(rnn_hidden, embedded_obs).sample()
+            frame = np.zeros((120, 160 * 2, 3), dtype=np.uint8)
+            frames = []
+
+            prediction_length = 100
+
+            for _ in range(prediction_length):
+                action = policy(obs)
+                obs, _, done, _ = self.env.step(action)
+
+                action = torch.as_tensor(action, device=self.device).unsqueeze(0)
+
+                # 潜在状態を観測と切り離して更新（policyの中の潜在状態には観測が反映されている）
+                with torch.no_grad():
+                    state_prior, rnn_hidden = self.rssm.transition.prior(
+                        self.rssm.transition.reccurent(state, action, rnn_hidden)
+                    )
+                    state = state_prior.sample()
+                    predicted_obs = self.rssm.observation(state, rnn_hidden)
+
+                real = obs.transpose(1, 2, 0)
+                imagination = (
+                    ((predicted_obs.squeeze().cpu().numpy() + 0.5) * 255)
+                    .astype(np.uint8)
+                    .transpose(1, 2, 0)
+                )
+
+                frame[:, :160, :] = real
+                frame[:, 160:, :] = imagination
+                frames.append(Image.fromarray(frame))
+
+                if done:
+                    break
+
+            frames[0].save(
+                os.path.join(self.gif_dir, "compare" + str(i) + ".gif"),
                 save_all=True,
                 append_images=frames[1:],
                 duration=40,
