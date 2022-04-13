@@ -19,7 +19,7 @@ pybullet 環境で強化学習による経路計画と RSSM による危険状�
 
 
 # 観測と想像上の軌道との比較
-左が観測で右が世界モデルによる再構成画像
+左が観測で右が世界モデルによる再構成画像<br>
 ![compare_gif1](/gif/compare0.gif)
 ![compare_gif2](/gif/compare1.gif)
 ![compare_gif3](/gif/compare2.gif)
