@@ -521,4 +521,5 @@ class Trainer:
                 save_all=True,
                 append_images=frames[1:],
                 duration=40,
+                loop=0,
             )
