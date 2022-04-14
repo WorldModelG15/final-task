@@ -1,6 +1,8 @@
 from datetime import datetime
+from email import policy
 import time
 import os
+from cv2 import compare
 
 import numpy as np
 from PIL import Image
@@ -74,7 +76,8 @@ class Trainer:
         if not os.path.exists(self.gif_dir):
             os.makedirs(self.gif_dir, exist_ok=True)
 
-        self.writer = SummaryWriter(self.log_dir)
+        if train:
+            self.writer = SummaryWriter(self.log_dir)
 
         # その他ハイパーパラメータ
         self.seed_episodes = config.seed_episodes  # 最初にランダム行動で探索するエピソード数
@@ -445,13 +448,13 @@ class Trainer:
             obs = self.env.reset()
             done = False
             total_reward = 0
-            frames = [Image.fromarray(obs.transpose(2, 1, 0))]
+            frames = [Image.fromarray(obs.transpose(1, 2, 0))]
 
             while not done:
                 action = policy(obs, training=False)
                 obs, reward, done, _ = self.env.step(action)
                 total_reward += reward
-                frames.append(Image.fromarray(obs.transpose(2, 1, 0)))
+                frames.append(Image.fromarray(obs.transpose(1, 2, 0)))
 
             print("Total Reward:", total_reward)
             frames[0].save(
@@ -459,4 +462,64 @@ class Trainer:
                 save_all=True,
                 append_images=frames[1:],
                 duration=40,
+            )
+
+    def compare_imagination(self, compare_count):
+        policy = Agent(self.encoder, self.rssm.transition, self.action_model)
+
+        for i in range(compare_count):
+            obs = self.env.reset()
+
+            for _ in range(np.random.randint(5, 100)):
+                action = policy(obs, training=False)
+                obs, _, _, _ = self.env.step(action)
+
+            preprocessed_obs = torch.as_tensor(
+                preprocess_obs(obs), device=self.device
+            ).unsqueeze(0)
+
+            with torch.no_grad():
+                embedded_obs = self.encoder(preprocessed_obs)
+
+            rnn_hidden = policy.rnn_hidden
+            state = self.rssm.transition.posterior(rnn_hidden, embedded_obs).sample()
+            frame = np.zeros((120, 160 * 2, 3), dtype=np.uint8)
+            frames = []
+
+            prediction_length = 100
+
+            for _ in range(prediction_length):
+                action = policy(obs)
+                obs, _, done, _ = self.env.step(action)
+
+                action = torch.as_tensor(action, device=self.device).unsqueeze(0)
+
+                # 潜在状態を観測と切り離して更新（policyの中の潜在状態には観測が反映されている）
+                with torch.no_grad():
+                    state_prior, rnn_hidden = self.rssm.transition.prior(
+                        self.rssm.transition.reccurent(state, action, rnn_hidden)
+                    )
+                    state = state_prior.sample()
+                    predicted_obs = self.rssm.observation(state, rnn_hidden)
+
+                real = obs.transpose(1, 2, 0)
+                imagination = (
+                    ((predicted_obs.squeeze().cpu().numpy() + 0.5) * 255)
+                    .astype(np.uint8)
+                    .transpose(1, 2, 0)
+                )
+
+                frame[:, :160, :] = real
+                frame[:, 160:, :] = imagination
+                frames.append(Image.fromarray(frame))
+
+                if done:
+                    break
+
+            frames[0].save(
+                os.path.join(self.gif_dir, "compare" + str(i) + ".gif"),
+                save_all=True,
+                append_images=frames[1:],
+                duration=40,
+                loop=0,
             )

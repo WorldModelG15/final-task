@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # env = NormalizeWrapper(env)
     env = ImgWrapper(env)  # to make the images from 120x160x3 into 3x120x160
     env = ActionWrapper(env)
-    # env = DtRewardWrapper(env)
+    env = DtRewardWrapper(env)
     env = EarlyStopWrapper(env)
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     config = DreamerConfig()

@@ -17,7 +17,7 @@ class DreamerConfig:
 
     # other hyper params
     seed_episodes: int = 5
-    all_episodes: int = 500
+    all_episodes: int = 300
     test_interval: int = 10
     model_save_interval: int = 100
     collect_interval: int = 50
@@ -28,7 +28,7 @@ class DreamerConfig:
     chunk_length: int = 50
     imagination_horizon: int = 15
 
-    gamma: float = 0.9
+    gamma: float = 0.99
     lambda_: float = 0.95
     clip_grad_norm: float = 100.0
     free_nats: float = 3.0

@@ -5,11 +5,23 @@
 
 pybullet 環境で強化学習による経路計画と RSSM による危険状態の予測を行い未然に衝突を防ぐことを目的とする
 
-## shibutani branch
+## 現状
 
-- Mac の場合
+とりあえずほおっておくとどんどん累計報酬が負になってしまうので、負の報酬を0にしてみた。<br>
+そのせいでかなり障害物と衝突しているが運転はおおむねできてそう<br>
 
-`pipenv run pip3 install -e env`  
-`pipenv run pip3 install pyglet==1.5.11`
+# テスト走行
+![test_gif1](/gif/test0.gif)
+![test_gif2](/gif/test1.gif)
+![test_gif3](/gif/test2.gif)
+![test_gif4](/gif/test3.gif)
+![test_gif5](/gif/test4.gif)
 
 
+# 観測と想像上の軌道との比較
+左が観測で右が世界モデルによる再構成画像<br>
+![compare_gif1](/gif/compare0.gif)
+![compare_gif2](/gif/compare1.gif)
+![compare_gif3](/gif/compare2.gif)
+![compare_gif4](/gif/compare8.gif)
+![compare_gif5](/gif/compare9.gif)

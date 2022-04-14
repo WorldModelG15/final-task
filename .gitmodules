@@ -1,4 +1,4 @@
-[submodule "env"]
-	path = env
+[submodule "gym-duckietown"]
+	path = gym-duckietown
 	url = https://github.com/WorldModelG15/gym-duckietown.git
-	branch = shibutani
+	branch = develop
