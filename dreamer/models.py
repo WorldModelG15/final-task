@@ -144,6 +144,29 @@ class RewardModel(nn.Module):
         return reward
 
 
+class CollisionModel(nn.Module):
+    """
+    p(r_t | s_t, h_t)
+    低次元の状態表現から衝突を予測する
+    """
+
+    def __init__(self, state_dim, rnn_hidden_dim, hidden_dim=400, act=F.elu):
+        super(CollisionModel, self).__init__()
+        self.fc1 = nn.Linear(state_dim + rnn_hidden_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc4 = nn.Linear(hidden_dim, 1)
+        self.sigmoid = nn.Sigmoid()
+        self.act = act
+
+    def forward(self, state, rnn_hidden):
+        hidden = self.act(self.fc1(torch.cat([state, rnn_hidden], dim=1)))
+        hidden = self.act(self.fc2(hidden))
+        hidden = self.act(self.fc3(hidden))
+        reward = self.sigmoid(self.fc4(hidden))
+        return reward
+
+
 class RSSM:
     def __init__(self, state_dim, action_dim, rnn_hidden_dim, device):
         self.transition = TransitionModel(state_dim, action_dim, rnn_hidden_dim).to(
@@ -157,6 +180,7 @@ class RSSM:
             state_dim,
             rnn_hidden_dim,
         ).to(device)
+        self.collision = CollisionModel(state_dim, rnn_hidden_dim).to(device)
 
 
 class Encoder(nn.Module):

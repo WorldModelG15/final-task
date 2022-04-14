@@ -7,6 +7,8 @@ from cv2 import compare
 import numpy as np
 from PIL import Image
 
+from gym_duckietown.simulator import get_agent_corners
+
 import torch
 from dreamer.config import DreamerConfig
 from dreamer.models import Encoder, RSSM, ValueModel, ActionModel
@@ -124,7 +126,10 @@ class Trainer:
             while not done:
                 action = self.env.action_space.sample()
                 next_obs, reward, done, _ = self.env.step(action)
-                self.replay_buffer.push(obs, action, reward, done)
+
+                agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
+                collision = self.env.collision(agent_corners)
+                self.replay_buffer.push(obs, action, reward, done, collision)
                 obs = next_obs
 
         steps = 0
@@ -148,8 +153,11 @@ class Trainer:
                 )
                 next_obs, reward, done, _ = self.env.step(action)
 
+                agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
+                collision = self.env.collision(agent_corners)
+
                 # リプレイバッファに観測, 行動, 報酬, doneを格納
-                self.replay_buffer.push(obs, action, reward, done)
+                self.replay_buffer.push(obs, action, reward, done, collision)
 
                 obs = next_obs
                 total_reward += reward
@@ -169,9 +177,13 @@ class Trainer:
                 # -------------------------------------------------------------------------------------
                 #  RSSM(trainsition_model, obs_model, reward_model)の更新 - Dynamics learning
                 # -------------------------------------------------------------------------------------
-                observations, actions, rewards, _ = self.replay_buffer.sample(
-                    self.batch_size, self.chunk_length
-                )
+                (
+                    observations,
+                    actions,
+                    rewards,
+                    _,
+                    collisions,
+                ) = self.replay_buffer.sample(self.batch_size, self.chunk_length)
 
                 # 観測を前処理し, RNNを用いたPyTorchでの学習のためにTensorの次元を調整
                 observations = preprocess_obs(observations)
@@ -179,6 +191,11 @@ class Trainer:
                 observations = observations.transpose(0, 1)
                 actions = torch.as_tensor(actions, device=self.device).transpose(0, 1)
                 rewards = torch.as_tensor(rewards, device=self.device).transpose(0, 1)
+                collisions = (
+                    torch.as_tensor(collisions, device=self.device)
+                    .transpose(0, 1)
+                    .float()
+                )
 
                 # 観測をエンコーダで低次元のベクトルに変換
                 embedded_observations = self.encoder(
@@ -232,6 +249,7 @@ class Trainer:
                 rnn_hiddens = rnn_hiddens[1:]
 
                 # 観測を再構成, また, 報酬を予測
+                # 衝突も予測
                 flatten_states = states.view(-1, self.state_dim)
                 flatten_rnn_hiddens = rnn_hiddens.view(-1, self.rnn_hidden_dim)
                 recon_observations = self.rssm.observation(
@@ -244,6 +262,9 @@ class Trainer:
                 predicted_rewards = self.rssm.reward(
                     flatten_states, flatten_rnn_hiddens
                 ).view(self.chunk_length - 1, self.batch_size, 1)
+                predicted_collisions = self.rssm.collision(
+                    flatten_states, flatten_rnn_hiddens
+                ).view(self.chunk_length - 1, self.batch_size, 1)
 
                 # 観測と報酬の予測誤差を計算
                 obs_loss = (
@@ -253,9 +274,12 @@ class Trainer:
                     .sum()
                 )
                 reward_loss = 0.5 * F.mse_loss(predicted_rewards, rewards[:-1])
+                collision_loss = 0.5 * F.binary_cross_entropy(
+                    predicted_collisions, collisions[:-1]
+                )
 
                 # 以上のロスを合わせて勾配降下で更新する
-                model_loss = kl_loss + obs_loss + reward_loss
+                model_loss = kl_loss + obs_loss + reward_loss + collision_loss
                 self.model_optimizer.zero_grad()
                 model_loss.backward()
                 clip_grad_norm_(self.model_params, self.clip_grad_norm)
@@ -345,7 +369,7 @@ class Trainer:
                 # ログをTensorBoardに出力
                 print(
                     "update_step: %3d model loss: %.5f, kl_loss: %.5f, "
-                    "obs_loss: %.5f, reward_loss: %.5f, "
+                    "obs_loss: %.5f, reward_loss: %.5f, collision_loss: %.5f, "
                     "value_loss: %.5f action_loss: %.5f"
                     % (
                         update_step + 1,
@@ -353,6 +377,7 @@ class Trainer:
                         kl_loss.item(),
                         obs_loss.item(),
                         reward_loss.item(),
+                        collision_loss.item(),
                         value_loss.item(),
                         action_loss.item(),
                     )
@@ -365,6 +390,9 @@ class Trainer:
                 self.writer.add_scalar("obs loss", obs_loss.item(), total_update_step)
                 self.writer.add_scalar(
                     "reward loss", reward_loss.item(), total_update_step
+                )
+                self.writer.add_scalar(
+                    "collision loss", collision_loss.item(), total_update_step
                 )
                 self.writer.add_scalar(
                     "value loss", value_loss.item(), total_update_step
@@ -452,7 +480,7 @@ class Trainer:
 
             while not done:
                 action = policy(obs, training=False)
-                obs, reward, done, _ = self.env.step(action)
+                obs, reward, done, info = self.env.step(action)
                 total_reward += reward
                 frames.append(Image.fromarray(obs.transpose(1, 2, 0)))
 
