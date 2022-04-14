@@ -25,4 +25,4 @@ if __name__ == "__main__":
     trainer = Trainer(env, device, config, False)
     trainer.load_models("/root/mnt/final-task/models/20220411053120/episode_0500")
 
-    trainer.view(10)
+    trainer.view(1)
