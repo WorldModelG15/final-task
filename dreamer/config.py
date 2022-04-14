@@ -16,7 +16,7 @@ class DreamerConfig:
     eps: float = 1e-4
 
     # other hyper params
-    seed_episodes: int = 1
+    seed_episodes: int = 5
     all_episodes: int = 300
     test_interval: int = 10
     model_save_interval: int = 100
