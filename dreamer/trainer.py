@@ -57,6 +57,7 @@ class Trainer:
             + list(self.rssm.transition.parameters())
             + list(self.rssm.observation.parameters())
             + list(self.rssm.reward.parameters())
+            + list(self.rssm.collision.parameters())
         )
         self.model_optimizer = torch.optim.Adam(self.model_params, lr=model_lr, eps=eps)
         self.value_optimizer = torch.optim.Adam(
@@ -105,19 +106,19 @@ class Trainer:
             config.free_nats  # KL誤差（RSSMのTransitionModelにおけるpriorとposteriorの間の誤差）がこの値以下の場合, 無視する
         )
 
-    def _add_exploration(self, action, iter):
-        """
-        たまにランダム行動（Epsilon-greedy）
-        """
-        expl_amount = self.train_noise
-        expl_amount = expl_amount - iter / self.expl_decay
-        expl_amount = max(self.expl_min, expl_amount)
+    # def _add_exploration(self, action, iter):
+    #     """
+    #     たまにランダム行動（Epsilon-greedy）
+    #     """
+    #     expl_amount = self.train_noise
+    #     expl_amount = expl_amount - iter / self.expl_decay
+    #     expl_amount = max(self.expl_min, expl_amount)
 
-        if np.random.uniform(0, 1) < expl_amount:
-            index = np.random.randint(0, self.action_dim, action.shape[:-1])
-            action = np.zeros_like(action)
-            action[index] = 1
-        return action
+    #     if np.random.uniform(0, 1) < expl_amount:
+    #         index = np.random.randint(0, self.action_dim, action.shape[:-1])
+    #         action = np.zeros_like(action)
+    #         action[index] = 1
+    #     return action
 
     def train(self):
         for episode in range(self.seed_episodes):
@@ -127,8 +128,10 @@ class Trainer:
                 action = self.env.action_space.sample()
                 next_obs, reward, done, _ = self.env.step(action)
 
+                # 衝突判定
                 agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
                 collision = self.env.collision(agent_corners)
+
                 self.replay_buffer.push(obs, action, reward, done, collision)
                 obs = next_obs
 
@@ -153,10 +156,11 @@ class Trainer:
                 )
                 next_obs, reward, done, _ = self.env.step(action)
 
+                # 衝突判定
                 agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
                 collision = self.env.collision(agent_corners)
 
-                # リプレイバッファに観測, 行動, 報酬, doneを格納
+                # リプレイバッファに観測, 行動, 報酬, done, collisionを格納
                 self.replay_buffer.push(obs, action, reward, done, collision)
 
                 obs = next_obs
@@ -469,6 +473,7 @@ class Trainer:
             torch.load(os.path.join(model_dir, "action_model.pth"))
         )
 
+    # 訓練した世界モデルとpolicyで環境とインタラクションしている様子をgifで保存します
     def view(self, test_count):
         policy = Agent(self.encoder, self.rssm.transition, self.action_model)
 
@@ -492,6 +497,7 @@ class Trainer:
                 duration=40,
             )
 
+    # 実際の観測と想像上の軌道を並べてgifに保存します
     def compare_imagination(self, compare_count):
         policy = Agent(self.encoder, self.rssm.transition, self.action_model)
 

@@ -3,7 +3,7 @@ import dataclasses
 
 @dataclasses.dataclass
 class DreamerConfig:
-    buffer_capacity: int = 500000  # colabのメモリに合わせて変えたほうがいいかも
+    buffer_capacity: int = 200000
 
     # state_dim
     state_dim: int = 30
