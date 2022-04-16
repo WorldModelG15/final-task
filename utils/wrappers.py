@@ -87,21 +87,28 @@ class ImgWrapper(gym.ObservationWrapper):
         return observation.transpose(2, 0, 1)
 
 
+# 2の報酬設計でloop_pedestriansだとそれなりに進んでいる（だいたいアヒルと衝突して終了）
 class DtRewardWrapper(gym.RewardWrapper):
     def __init__(self, env):
         super(DtRewardWrapper, self).__init__(env)
 
     def reward(self, reward):
+        # 1.default
         # if reward == -1000:
         #     reward = -10
         # elif reward > 0:
         #     reward += 10
         # else:
         #     reward += 4
-        if reward == -1000:
-            return reward
+
+        # 2.original_1
+        # if reward == -1000:
+        #     return reward
+        # if reward < 0:
+        #     reward = 0
+
         if reward < 0:
-            reward = 0
+            reward *= 0.1
 
         return reward
 

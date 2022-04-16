@@ -451,6 +451,10 @@ class Trainer:
                     os.path.join(model_log_dir, "reward_model.pth"),
                 )
                 torch.save(
+                    self.rssm.collision.state_dict(),
+                    os.path.join(model_log_dir, "collision_model.pth"),
+                )
+                torch.save(
                     self.value_model.state_dict(),
                     os.path.join(model_log_dir, "value_model.pth"),
                 )
@@ -461,6 +465,7 @@ class Trainer:
 
         self.writer.close()
 
+    # 一応全モデルロードします
     def load_models(self, model_dir):
         self.encoder.load_state_dict(torch.load(os.path.join(model_dir, "encoder.pth")))
         self.rssm.transition.load_state_dict(
@@ -469,25 +474,41 @@ class Trainer:
         self.rssm.observation.load_state_dict(
             torch.load(os.path.join(model_dir, "obs_model.pth"))
         )
+        self.rssm.reward.load_state_dict(
+            torch.load(os.path.join(model_dir, "reward_model.pth"))
+        )
+        self.rssm.collision.load_state_dict(
+            torch.load(os.path.join(model_dir, "collision_model.pth"))
+        )
+        self.value_model.load_state_dict(
+            torch.load(os.path.join(model_dir, "value_model.pth"))
+        )
         self.action_model.load_state_dict(
             torch.load(os.path.join(model_dir, "action_model.pth"))
         )
 
     # 訓練した世界モデルとpolicyで環境とインタラクションしている様子をgifで保存します
+    # 行動選択と同時に衝突予測を行い、一緒に可視化します
     def view(self, test_count):
-        policy = Agent(self.encoder, self.rssm.transition, self.action_model)
+        policy = Agent(
+            self.encoder, self.rssm.transition, self.action_model, self.rssm.collision
+        )
 
         for i in range(test_count):
             obs = self.env.reset()
             done = False
             total_reward = 0
-            frames = [Image.fromarray(obs.transpose(1, 2, 0))]
+            frame = np.zeros((120, 160 + 20, 3), dtype=np.uint8)
+            frame[:, :160, :] = obs.transpose(1, 2, 0)
+            frames = [Image.fromarray(frame)]
 
             while not done:
-                action = policy(obs, training=False)
+                action, collision = policy.act_with_collision(obs, training=False)
                 obs, reward, done, info = self.env.step(action)
                 total_reward += reward
-                frames.append(Image.fromarray(obs.transpose(1, 2, 0)))
+                frame[:, :160, :] = obs.transpose(1, 2, 0)
+                frame[:, 160:, 0] = (collision * 255).astype(int)
+                frames.append(Image.fromarray(frame))
 
             print("Total Reward:", total_reward)
             frames[0].save(
