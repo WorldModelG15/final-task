@@ -32,3 +32,6 @@ class DreamerConfig:
     lambda_: float = 0.95
     clip_grad_norm: float = 100.0
     free_nats: float = 3.0
+
+    # 数ステップcollision判定
+    extend_collision_step: int = 10

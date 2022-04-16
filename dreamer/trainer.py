@@ -106,6 +106,8 @@ class Trainer:
             config.free_nats  # KL誤差（RSSMのTransitionModelにおけるpriorとposteriorの間の誤差）がこの値以下の場合, 無視する
         )
 
+        self.extend_collision_steps = config.extend_collision_step
+
     # def _add_exploration(self, action, iter):
     #     """
     #     たまにランダム行動（Epsilon-greedy）
@@ -124,16 +126,32 @@ class Trainer:
         for episode in range(self.seed_episodes):
             obs = self.env.reset()
             done = False
+            experiences = []
+            collision_episode = False  # 衝突したかどうか
+
             while not done:
                 action = self.env.action_space.sample()
                 next_obs, reward, done, _ = self.env.step(action)
 
-                # 衝突判定
+                # 衝突判定(衝突の１ステップ後にエピソード終了する点に注意)
                 agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
                 collision = self.env.collision(agent_corners)
 
-                self.replay_buffer.push(obs, action, reward, done, collision)
+                if collision:
+                    collision_episode = True
+
+                experiences.append([obs, action, reward, done, collision])
+
                 obs = next_obs
+
+                # 衝突してたら前の数ステップは衝突データとみなします
+            if collision_episode:
+                for exp in experiences[-self.extend_collision_steps :]:
+                    exp[-1] = 1
+
+            # まとめて経験をバッファに入れます
+            for exp in experiences:
+                self.replay_buffer.push(*exp)
 
         steps = 0
 
@@ -147,6 +165,10 @@ class Trainer:
 
             obs = self.env.reset()
             done = False
+
+            experiences = []
+            collision_episode = False  # 衝突したかどうか
+
             total_reward = 0
             while not done:
                 action = policy(obs)
@@ -156,16 +178,27 @@ class Trainer:
                 )
                 next_obs, reward, done, _ = self.env.step(action)
 
-                # 衝突判定
+                # 衝突判定(衝突の１ステップ後にエピソード終了する点に注意)
                 agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
                 collision = self.env.collision(agent_corners)
 
-                # リプレイバッファに観測, 行動, 報酬, done, collisionを格納
-                self.replay_buffer.push(obs, action, reward, done, collision)
+                if collision:
+                    collision_episode = True
+
+                experiences.append([obs, action, reward, done, collision])
 
                 obs = next_obs
                 total_reward += reward
                 steps += 1
+
+            # 衝突してたら前の数ステップは衝突データとみなします
+            if collision_episode:
+                for exp in experiences[-self.extend_collision_steps :]:
+                    exp[-1] = 1
+
+            # まとめて経験をバッファに入れます
+            for exp in experiences:
+                self.replay_buffer.push(*exp)
 
             # 訓練時の報酬と経過時間をログとして表示
             self.writer.add_scalar("total reward at train", total_reward, episode)
@@ -505,10 +538,14 @@ class Trainer:
             while not done:
                 action, collision = policy.act_with_collision(obs, training=False)
                 obs, reward, done, info = self.env.step(action)
+
                 total_reward += reward
                 frame[:, :160, :] = obs.transpose(1, 2, 0)
                 frame[:, 160:, 0] = (collision * 255).astype(int)
                 frames.append(Image.fromarray(frame))
+
+                agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
+                collision = self.env.collision(agent_corners)
 
             print("Total Reward:", total_reward)
             frames[0].save(
