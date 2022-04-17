@@ -544,9 +544,6 @@ class Trainer:
                 frame[:, 160:, 0] = (collision * 255).astype(int)
                 frames.append(Image.fromarray(frame))
 
-                agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
-                collision = self.env.collision(agent_corners)
-
             print("Total Reward:", total_reward)
             frames[0].save(
                 os.path.join(self.gif_dir, "test" + str(i) + ".gif"),
