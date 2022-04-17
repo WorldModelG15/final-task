@@ -106,21 +106,11 @@ class Trainer:
             config.free_nats  # KL誤差（RSSMのTransitionModelにおけるpriorとposteriorの間の誤差）がこの値以下の場合, 無視する
         )
 
-        self.extend_collision_steps = config.extend_collision_step
-
-    # def _add_exploration(self, action, iter):
-    #     """
-    #     たまにランダム行動（Epsilon-greedy）
-    #     """
-    #     expl_amount = self.train_noise
-    #     expl_amount = expl_amount - iter / self.expl_decay
-    #     expl_amount = max(self.expl_min, expl_amount)
-
-    #     if np.random.uniform(0, 1) < expl_amount:
-    #         index = np.random.randint(0, self.action_dim, action.shape[:-1])
-    #         action = np.zeros_like(action)
-    #         action[index] = 1
-    #     return action
+        self.is_collision_regression = config.is_collision_regression  # 回帰or分類
+        self.extend_collision_steps = (
+            config.extend_collision_step
+        )  # collision!=0とするステップ数
+        self.collision_gamma = config.colliision_gamma  # 回帰の場合、collisionの減衰率
 
     def train(self):
         for episode in range(self.seed_episodes):
@@ -144,10 +134,23 @@ class Trainer:
 
                 obs = next_obs
 
-                # 衝突してたら前の数ステップは衝突データとみなします
+            # 衝突してたら前の数ステップは衝突データとみなします
             if collision_episode:
-                for exp in experiences[-self.extend_collision_steps :]:
-                    exp[-1] = 1
+                if self.is_collision_regression:
+                    collision_value = 1.0
+                    for i in range(
+                        len(experiences),
+                        max(0, len(experiences) - self.extend_collision_steps),
+                        -1,
+                    ):
+                        experiences[i][-1] = collision_value
+                        collision_value *= self.collision_gamma
+                else:
+                    for i in range(
+                        max(0, len(experiences) - self.extend_collision_steps),
+                        len(experiences),
+                    ):
+                        experiences[i][-1] = 1
 
             # まとめて経験をバッファに入れます
             for exp in experiences:
@@ -193,8 +196,21 @@ class Trainer:
 
             # 衝突してたら前の数ステップは衝突データとみなします
             if collision_episode:
-                for exp in experiences[-self.extend_collision_steps :]:
-                    exp[-1] = 1
+                if self.is_collision_regression:
+                    collision_value = 1.0
+                    for i in range(
+                        len(experiences),
+                        max(0, len(experiences) - self.extend_collision_steps),
+                        -1,
+                    ):
+                        experiences[i][-1] = collision_value
+                        collision_value *= self.collision_gamma
+                else:
+                    for i in range(
+                        max(0, len(experiences) - self.extend_collision_steps),
+                        len(experiences),
+                    ):
+                        experiences[i][-1] = 1
 
             # まとめて経験をバッファに入れます
             for exp in experiences:
@@ -311,9 +327,15 @@ class Trainer:
                     .sum()
                 )
                 reward_loss = 0.5 * F.mse_loss(predicted_rewards, rewards[:-1])
-                collision_loss = 0.5 * F.binary_cross_entropy(
-                    predicted_collisions, collisions[:-1]
-                )
+
+                if self.is_collision_regression:
+                    collision_loss = 0.5 * F.mse_loss(
+                        predicted_collisions, collisions[:-1]
+                    )
+                else:
+                    collision_loss = F.binary_cross_entropy(
+                        predicted_collisions, collisions[:-1]
+                    )
 
                 # 以上のロスを合わせて勾配降下で更新する
                 model_loss = kl_loss + obs_loss + reward_loss + collision_loss
@@ -343,7 +365,7 @@ class Trainer:
                     device=flatten_rnn_hiddens.device
                 )
 
-                # 　未来予測をして想像上の軌道を作る前に, 最初の状態としては先ほどモデルの更新で使っていた
+                # 未来予測をして想像上の軌道を作る前に, 最初の状態としては先ほどモデルの更新で使っていた
                 # リプレイバッファからサンプルされた観測データを取り込んだ上で推論した状態表現を使う
                 imaginated_states[0] = flatten_states
                 imaginated_rnn_hiddens[0] = flatten_rnn_hiddens

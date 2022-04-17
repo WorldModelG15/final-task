@@ -34,4 +34,6 @@ class DreamerConfig:
     free_nats: float = 3.0
 
     # 数ステップcollision判定
-    extend_collision_step: int = 10
+    is_collision_regression: bool = False
+    extend_collision_step: int = 30
+    colliision_gamma: float = 0.95  # 回帰の時の減衰率
