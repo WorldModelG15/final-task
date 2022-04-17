@@ -1,0 +1,591 @@
+tiles:
+- [grass, grass, grass, grass, grass, grass, grass, grass]
+- [grass, curve_left/W, straight/E, straight/E, straight/E, straight/E, curve_left/N, grass]
+- [grass, straight/S, grass, grass, grass, grass, straight/S, grass]
+- [grass, straight/S, grass, grass, grass, grass, straight/S, grass]
+- [grass, straight/S, grass, grass, grass, grass, straight/S, grass]
+- [grass, straight/S, grass, grass, grass, grass, straight/S, grass]
+- [grass, curve_left/S, straight/E, straight/E, straight/E, straight/E, curve_left/E, grass]
+- [grass, grass, grass, grass, grass, grass, grass, grass]
+
+tile_size: 1
+
+# Always start on the drivable tile
+start_tile: [1, 1]
+
+# Fixed initial pose
+start_pose: [[0.480, 0, 0.2925], 0]
+
+objects:
+
+# 四隅（x=1）
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.2, 2.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.2, 2.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.89, 2.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.89, 2.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.2, 3.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.2, 3.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.89, 3.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.89, 3.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.2, 4.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.2, 4.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.89, 4.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.89, 4.89]
+  rotate: 60
+  static: true
+
+# 四隅（x=6）
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.2, 1.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.2, 1.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.89, 1.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.89, 1.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.2, 2.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.2, 2.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.89, 2.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.89, 2.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.2, 3.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.2, 3.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.89, 3.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.89, 3.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.2, 4.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.2, 4.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.89, 4.1]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.89, 4.89]
+  rotate: 60
+  static: true
+
+# 四隅(y=0)
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.1, 0.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.1, 0.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.89, 0.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.89, 0.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.1, 0.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.1, 0.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.89, 0.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.89, 0.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.1, 0.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.1, 0.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.89, 0.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.89, 0.89]
+  rotate: 60
+  static: true
+
+# 四隅(y=5)
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [2.1, 5.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [2.1, 5.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [2.89, 5.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [2.89, 5.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.1, 5.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.1, 5.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.89, 5.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.89, 5.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.1, 5.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.1, 5.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.89, 5.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.89, 5.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.1, 5.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.1, 5.89]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.89, 5.2]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.89, 5.89]
+  rotate: 60
+  static: true
+
+# スラローム(x=1)
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.3, 1.3]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.7, 1.7]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.5, 2.5]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.3, 3.3]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.7, 3.7]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [1.5, 4.5]
+  rotate: 60
+  static: true
+
+# スラローム(x=6)
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.3, 1.3]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.7, 1.7]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.5, 2.5]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.3, 3.3]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.7, 3.7]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [6.5, 4.5]
+  rotate: 60
+  static: true
+
+# スラローム(y=0)
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [2.3, 0.3]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [2.7, 0.7]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.5, 0.5]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.3, 0.3]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.7, 0.7]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.5, 0.5]
+  rotate: 60
+  static: true
+
+
+# スラローム(y=5)
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [2.3, 5.3]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [2.7, 5.7]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [3.5, 5.5]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.3, 5.3]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [4.7, 5.7]
+  rotate: 60
+  static: true
+
+- height: 0.09
+  kind: duckie
+  optional: false
+  pos: [5.5, 5.5]
+  rotate: 60
+  static: true
