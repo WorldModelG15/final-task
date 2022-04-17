@@ -119,14 +119,14 @@ class ActionWrapper(gym.ActionWrapper):
         super(ActionWrapper, self).__init__(env)
 
     def action(self, action):
-        action_ = [action[0] * 0.8, action[1]]
+        action_ = [action[0] * 0.8, action[1] * 0.8]
         return action_
 
 
 # early stop learning
-class EarlyStopWrapper(gym.Wrapper):
+class OriginalWrapper(gym.Wrapper):
     def __init__(self, env):
-        super(EarlyStopWrapper, self).__init__(env)
+        super(OriginalWrapper, self).__init__(env)
         self.env = env
         self.total_steps = 0
         self.total_reward = 0
@@ -137,6 +137,9 @@ class EarlyStopWrapper(gym.Wrapper):
         self.total_steps += 1
         if self.total_steps >= 3000:
             done = True
+        # バック走行ペナルティ
+        if action[0] < 0 and action[1] < 0:
+            reward = -1.0
         return next_state, reward, done, info
 
     def reset(self):

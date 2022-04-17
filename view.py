@@ -1,12 +1,11 @@
 from utils.env import launch_env
 from utils.wrappers import (
-    EarlyStopWrapper,
+    OriginalWrapper,
     NormalizeWrapper,
     ImgWrapper,
     DtRewardWrapper,
     ActionWrapper,
     ResizeWrapper,
-    EarlyStopWrapper,
 )
 from dreamer.config import DreamerConfig
 import torch
@@ -19,10 +18,10 @@ if __name__ == "__main__":
     env = ImgWrapper(env)  # to make the images from 120x160x3 into 3x120x160
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
-    env = EarlyStopWrapper(env)
+    env = OriginalWrapper(env)
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     config = DreamerConfig()
     trainer = Trainer(env, device, config, False)
-    trainer.load_models("/root/mnt/final-task/models/20220412164309/episode_0300")
+    trainer.load_models("/root/mnt/final-task/models/20220416132240/episode_0300")
 
-    trainer.view(1)
+    trainer.view(10)

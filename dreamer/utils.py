@@ -14,7 +14,7 @@ class ReplayBuffer(object):
         self.actions = np.zeros((capacity, action_dim), dtype=np.float32)
         self.rewards = np.zeros((capacity, 1), dtype=np.float32)
         self.done = np.zeros((capacity, 1), dtype=np.bool)
-        self.collisions = np.zeros((capacity, 1), dtype=np.bool)
+        self.collisions = np.zeros((capacity, 1), dtype=np.float32)
 
         self.index = 0
         self.is_filled = False

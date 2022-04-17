@@ -106,34 +106,56 @@ class Trainer:
             config.free_nats  # KL誤差（RSSMのTransitionModelにおけるpriorとposteriorの間の誤差）がこの値以下の場合, 無視する
         )
 
-    # def _add_exploration(self, action, iter):
-    #     """
-    #     たまにランダム行動（Epsilon-greedy）
-    #     """
-    #     expl_amount = self.train_noise
-    #     expl_amount = expl_amount - iter / self.expl_decay
-    #     expl_amount = max(self.expl_min, expl_amount)
-
-    #     if np.random.uniform(0, 1) < expl_amount:
-    #         index = np.random.randint(0, self.action_dim, action.shape[:-1])
-    #         action = np.zeros_like(action)
-    #         action[index] = 1
-    #     return action
+        self.is_collision_regression = config.is_collision_regression  # 回帰or分類
+        self.extend_collision_steps = (
+            config.extend_collision_step
+        )  # collision!=0とするステップ数
+        self.collision_gamma = config.colliision_gamma  # 回帰の場合、collisionの減衰率
 
     def train(self):
         for episode in range(self.seed_episodes):
             obs = self.env.reset()
             done = False
+            experiences = []
+            collision_episode = False  # 衝突したかどうか
+
             while not done:
                 action = self.env.action_space.sample()
                 next_obs, reward, done, _ = self.env.step(action)
 
-                # 衝突判定
+                # 衝突判定(衝突の１ステップ後にエピソード終了する点に注意)
                 agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
-                collision = self.env.collision(agent_corners)
+                collision = 1.0 if self.env.collision(agent_corners) else 0.0
 
-                self.replay_buffer.push(obs, action, reward, done, collision)
+                if collision:
+                    collision_episode = True
+
+                experiences.append([obs, action, reward, done, collision])
+
                 obs = next_obs
+
+            # 衝突してたら前の数ステップは衝突データとみなします
+            if collision_episode:
+                if self.is_collision_regression:
+                    collision_value = 1.0
+                    for i in range(
+                        len(experiences) - 1,
+                        max(0, len(experiences) - self.extend_collision_steps),
+                        -1,
+                    ):
+                        experiences[i][-1] = collision_value
+                        collision_value *= self.collision_gamma
+
+                else:
+                    for i in range(
+                        max(0, len(experiences) - self.extend_collision_steps),
+                        len(experiences),
+                    ):
+                        experiences[i][-1] = 1
+
+            # まとめて経験をバッファに入れます
+            for exp in experiences:
+                self.replay_buffer.push(*exp)
 
         steps = 0
 
@@ -147,6 +169,10 @@ class Trainer:
 
             obs = self.env.reset()
             done = False
+
+            experiences = []
+            collision_episode = False  # 衝突したかどうか
+
             total_reward = 0
             while not done:
                 action = policy(obs)
@@ -156,16 +182,40 @@ class Trainer:
                 )
                 next_obs, reward, done, _ = self.env.step(action)
 
-                # 衝突判定
+                # 衝突判定(衝突の１ステップ後にエピソード終了する点に注意)
                 agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
                 collision = self.env.collision(agent_corners)
 
-                # リプレイバッファに観測, 行動, 報酬, done, collisionを格納
-                self.replay_buffer.push(obs, action, reward, done, collision)
+                if collision:
+                    collision_episode = True
+
+                experiences.append([obs, action, reward, done, collision])
 
                 obs = next_obs
                 total_reward += reward
                 steps += 1
+
+            # 衝突してたら前の数ステップは衝突データとみなします
+            if collision_episode:
+                if self.is_collision_regression:
+                    collision_value = 1.0
+                    for i in range(
+                        len(experiences),
+                        max(0, len(experiences) - self.extend_collision_steps),
+                        -1,
+                    ):
+                        experiences[i][-1] = collision_value
+                        collision_value *= self.collision_gamma
+                else:
+                    for i in range(
+                        max(0, len(experiences) - self.extend_collision_steps),
+                        len(experiences),
+                    ):
+                        experiences[i][-1] = 1
+
+            # まとめて経験をバッファに入れます
+            for exp in experiences:
+                self.replay_buffer.push(*exp)
 
             # 訓練時の報酬と経過時間をログとして表示
             self.writer.add_scalar("total reward at train", total_reward, episode)
@@ -278,9 +328,15 @@ class Trainer:
                     .sum()
                 )
                 reward_loss = 0.5 * F.mse_loss(predicted_rewards, rewards[:-1])
-                collision_loss = 0.5 * F.binary_cross_entropy(
-                    predicted_collisions, collisions[:-1]
-                )
+
+                if self.is_collision_regression:
+                    collision_loss = 0.5 * F.mse_loss(
+                        predicted_collisions, collisions[:-1]
+                    )
+                else:
+                    collision_loss = F.binary_cross_entropy(
+                        predicted_collisions, collisions[:-1]
+                    )
 
                 # 以上のロスを合わせて勾配降下で更新する
                 model_loss = kl_loss + obs_loss + reward_loss + collision_loss
@@ -310,7 +366,7 @@ class Trainer:
                     device=flatten_rnn_hiddens.device
                 )
 
-                # 　未来予測をして想像上の軌道を作る前に, 最初の状態としては先ほどモデルの更新で使っていた
+                # 未来予測をして想像上の軌道を作る前に, 最初の状態としては先ほどモデルの更新で使っていた
                 # リプレイバッファからサンプルされた観測データを取り込んだ上で推論した状態表現を使う
                 imaginated_states[0] = flatten_states
                 imaginated_rnn_hiddens[0] = flatten_rnn_hiddens
@@ -505,6 +561,7 @@ class Trainer:
             while not done:
                 action, collision = policy.act_with_collision(obs, training=False)
                 obs, reward, done, info = self.env.step(action)
+
                 total_reward += reward
                 frame[:, :160, :] = obs.transpose(1, 2, 0)
                 frame[:, 160:, 0] = (collision * 255).astype(int)
