@@ -125,7 +125,7 @@ class Trainer:
 
                 # 衝突判定(衝突の１ステップ後にエピソード終了する点に注意)
                 agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
-                collision = self.env.collision(agent_corners)
+                collision = 1.0 if self.env.collision(agent_corners) else 0.0
 
                 if collision:
                     collision_episode = True
@@ -139,12 +139,13 @@ class Trainer:
                 if self.is_collision_regression:
                     collision_value = 1.0
                     for i in range(
-                        len(experiences),
+                        len(experiences) - 1,
                         max(0, len(experiences) - self.extend_collision_steps),
                         -1,
                     ):
                         experiences[i][-1] = collision_value
                         collision_value *= self.collision_gamma
+
                 else:
                     for i in range(
                         max(0, len(experiences) - self.extend_collision_steps),
