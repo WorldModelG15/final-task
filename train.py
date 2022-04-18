@@ -1,7 +1,6 @@
 from utils.env import launch_env
 from utils.wrappers import (
     OriginalWrapper,
-    NormalizeWrapper,
     ImgWrapper,
     DtRewardWrapper,
     ActionWrapper,
@@ -12,13 +11,26 @@ import torch
 from dreamer.trainer import Trainer
 
 if __name__ == "__main__":
-    env = launch_env(map_name="loop_pedestrians")
+    ### デフォルトのマップで学習する場合
+    env = launch_env(
+        map_name="loop_pedestrians"
+    )  # randomize_maps_on_reset=True でマップランダム化, enable_newly_visited_tile_reward=True でタイル報酬の有効化です
+
+    ### オリジナルのマップで学習する場合
+    # map_dir_abs_path = (
+    #     "/root/mnt/final-task/gym-duckietown/created_maps/"  # ここは環境によって変えます
+    # )
+    # map_name = "zigzag"  # 'zigzag','oneloop','three_statics','loop_pedestrian'から選択です
+    # env = launch_env(
+    #     is_original_map=True, map_abs_path=map_dir_abs_path + map_name + ".yaml"
+    # )
+
     env = ResizeWrapper(env)
-    # env = NormalizeWrapper(env)
     env = ImgWrapper(env)  # to make the images from 120x160x3 into 3x120x160
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
     env = OriginalWrapper(env)
+
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     config = DreamerConfig()
     trainer = Trainer(env, device, config)

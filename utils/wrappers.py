@@ -119,7 +119,10 @@ class ActionWrapper(gym.ActionWrapper):
         super(ActionWrapper, self).__init__(env)
 
     def action(self, action):
-        action_ = [action[0] * 0.8, action[1] * 0.8]
+        action_ = [
+            action[0] * 0.8,
+            action[1],
+        ]  # 両方0.8かけるとうまく曲がれなかったので曲がるために必要かも これだと左折が難しい？
         return action_
 
 
@@ -135,7 +138,7 @@ class OriginalWrapper(gym.Wrapper):
         next_state, reward, done, info = self.env.step(action)
         self.total_reward += reward
         self.total_steps += 1
-        if self.total_steps >= 3000:
+        if self.total_steps >= 2000:
             done = True
         # バック走行ペナルティ
         if action[0] < 0 and action[1] < 0:

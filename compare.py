@@ -1,7 +1,6 @@
 from utils.env import launch_env
 from utils.wrappers import (
     OriginalWrapper,
-    NormalizeWrapper,
     ImgWrapper,
     DtRewardWrapper,
     ActionWrapper,
@@ -12,9 +11,19 @@ import torch
 from dreamer.trainer import Trainer
 
 if __name__ == "__main__":
+    ### デフォルトのマップで学習する場合
     env = launch_env(map_name="loop_pedestrians")
+
+    ### オリジナルのマップで学習する場合
+    # map_dir_abs_path = (
+    #     "/root/mnt/final-task/gym-duckietown/created_maps/"  # ここは環境によって変えます
+    # )
+    # map_name = "zigzag"  # 'zigzag','oneloop','three_statics','loop_pedestrian'から選択です
+    # env = launch_env(
+    #     is_original_map=True, map_abs_path=map_dir_abs_path + map_name + ".yaml"
+    # )
+
     env = ResizeWrapper(env)
-    # env = NormalizeWrapper(env)
     env = ImgWrapper(env)  # to make the images from 120x160x3 into 3x120x160
     env = ActionWrapper(env)
     env = DtRewardWrapper(env)
