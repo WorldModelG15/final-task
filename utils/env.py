@@ -2,7 +2,7 @@ import gym
 import gym_duckietown
 
 
-def launch_env(id=None, map_name="loop_empty", is_original_map=False, map_abs_path=""):
+def launch_env(id=None, map_name="loop_empty", is_original_map=False, map_abs_path="", enable_newly_visited_tile_reward=False):
     env = None
     if id is None:
         # Launch the environment
@@ -20,6 +20,7 @@ def launch_env(id=None, map_name="loop_empty", is_original_map=False, map_abs_pa
             distortion=True,
             is_original_map=is_original_map,
             map_abs_path = map_abs_path,
+            enable_newly_visited_tile_reward = enable_newly_visited_tile_reward
         )
     else:
         env = gym.make(id)
