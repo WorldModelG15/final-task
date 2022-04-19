@@ -11,7 +11,7 @@ from gym_duckietown.simulator import get_agent_corners
 
 import torch
 from dreamer.config import DreamerConfig
-from dreamer.models import Encoder, RSSM, ValueModel, ActionModel
+from dreamer.models import CnnCollisionModel, Encoder, RSSM, ValueModel, ActionModel
 from dreamer.agent import Agent
 from dreamer.utils import ReplayBuffer, preprocess_obs, lambda_target
 from torch.utils.tensorboard import SummaryWriter
@@ -42,13 +42,16 @@ class Trainer:
         # 確率的状態の次元と決定的状態（RNNの隠れ状態）の次元は一致しなくて良い
         self.encoder = Encoder().to(device)
         self.rssm = RSSM(self.state_dim, self.action_dim, self.rnn_hidden_dim, device)
+        self.cnn_collision_model = CnnCollisionModel()
         self.value_model = ValueModel(self.state_dim, self.rnn_hidden_dim).to(device)
         self.action_model = ActionModel(
             self.state_dim, self.rnn_hidden_dim, self.action_dim
         ).to(device)
 
         # オプティマイザの宣言
-        model_lr = config.model_lr  # encoder, rssm, obs_model, reward_modelの学習率
+        model_lr = (
+            config.model_lr
+        )  # encoder, rssm, obs_model, reward_model, collision_modelの学習率
         value_lr = config.value_lr
         action_lr = config.action_lr
         eps = config.eps
@@ -60,6 +63,9 @@ class Trainer:
             + list(self.rssm.collision.parameters())
         )
         self.model_optimizer = torch.optim.Adam(self.model_params, lr=model_lr, eps=eps)
+        self.cnn_collision_model_optimizer = torch.optim.Adam(
+            self.cnn_collision_model.parameters(), lr=model_lr, eps=eps
+        )
         self.value_optimizer = torch.optim.Adam(
             self.value_model.parameters(), lr=value_lr, eps=eps
         )
@@ -184,7 +190,7 @@ class Trainer:
 
                 # 衝突判定(衝突の１ステップ後にエピソード終了する点に注意)
                 agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
-                collision = self.env.collision(agent_corners)
+                collision = 1.0 if self.env.collision(agent_corners) else 0.0
 
                 if collision:
                     collision_episode = True
@@ -345,6 +351,27 @@ class Trainer:
                 clip_grad_norm_(self.model_params, self.clip_grad_norm)
                 self.model_optimizer.step()
 
+                ### CNN Collision Model の更新
+
+                observations = observations.detach()
+                collisions = collisions.detach()
+                self.cnn_collision_model_optimizer.zero_grad()
+                cnn_predicted_collisions = self.cnn_collision_model(
+                    observations.reshape(-1, *self.env.observation_space.shape)
+                ).view(self.chunk_length, self.batch_size, 1)
+                if self.is_collision_regression:
+                    cnn_collision_model_loss = 0.5 * F.mse_loss(
+                        cnn_predicted_collisions, collisions
+                    )
+                else:
+                    cnn_collision_model_loss = F.binary_cross_entropy(
+                        cnn_predicted_collisions, collisions
+                    )
+                cnn_collision_model_loss.backward()
+                self.cnn_collision_model_optimizer.step()
+
+                ###
+
                 # --------------------------------------------------
                 #  Action Model, Value　Modelの更新　- Behavior leaning
                 # --------------------------------------------------
@@ -429,7 +456,7 @@ class Trainer:
                 # ログをTensorBoardに出力
                 print(
                     "update_step: %3d model loss: %.5f, kl_loss: %.5f, "
-                    "obs_loss: %.5f, reward_loss: %.5f, collision_loss: %.5f, "
+                    "obs_loss: %.5f, reward_loss: %.5f, collision_loss: %.5f, cnn_collision_loss: %.5f,"
                     "value_loss: %.5f action_loss: %.5f"
                     % (
                         update_step + 1,
@@ -438,6 +465,7 @@ class Trainer:
                         obs_loss.item(),
                         reward_loss.item(),
                         collision_loss.item(),
+                        cnn_collision_model_loss.item(),
                         value_loss.item(),
                         action_loss.item(),
                     )
@@ -453,6 +481,11 @@ class Trainer:
                 )
                 self.writer.add_scalar(
                     "collision loss", collision_loss.item(), total_update_step
+                )
+                self.writer.add_scalar(
+                    "cnn collision loss",
+                    cnn_collision_model_loss.item(),
+                    total_update_step,
                 )
                 self.writer.add_scalar(
                     "value loss", value_loss.item(), total_update_step
@@ -511,6 +544,10 @@ class Trainer:
                     os.path.join(model_log_dir, "collision_model.pth"),
                 )
                 torch.save(
+                    self.cnn_collision_model.state_dict(),
+                    os.path.join(model_log_dir, "cnn_collision_model.pth"),
+                )
+                torch.save(
                     self.value_model.state_dict(),
                     os.path.join(model_log_dir, "value_model.pth"),
                 )
@@ -536,6 +573,9 @@ class Trainer:
         self.rssm.collision.load_state_dict(
             torch.load(os.path.join(model_dir, "collision_model.pth"))
         )
+        self.cnn_collision_model.load_state_dict(
+            torch.load(os.path.join(model_dir, "cnn_collision_model.pth"))
+        )
         self.value_model.load_state_dict(
             torch.load(os.path.join(model_dir, "value_model.pth"))
         )
@@ -544,8 +584,8 @@ class Trainer:
         )
 
     # 訓練した世界モデルとpolicyで環境とインタラクションしている様子をgifで保存します
-    # 行動選択と同時に衝突予測を行い、一緒に可視化します
-    def view(self, test_count):
+    # 行動選択と同時に'世界モデルによる'衝突予測を行い、一緒に可視化します
+    def view_with_collision_prediction(self, test_count):
         policy = Agent(
             self.encoder, self.rssm.transition, self.action_model, self.rssm.collision
         )
@@ -560,6 +600,46 @@ class Trainer:
 
             while not done:
                 action, collision = policy.act_with_collision(obs, training=False)
+                obs, reward, done, info = self.env.step(action)
+
+                total_reward += reward
+                frame[:, :160, :] = obs.transpose(1, 2, 0)
+                frame[:, 160:, 0] = (collision * 255).astype(int)
+                frames.append(Image.fromarray(frame))
+
+            print("Total Reward:", total_reward)
+            frames[0].save(
+                os.path.join(self.gif_dir, "test" + str(i) + ".gif"),
+                save_all=True,
+                append_images=frames[1:],
+                duration=40,
+            )
+
+    # 訓練した世界モデルとpolicyで環境とインタラクションしている様子をgifで保存します
+    # 行動選択と同時に'CNNモデルによる'衝突予測を行い、一緒に可視化します
+    def view_with_cnn_collision_prediction(self, test_count):
+        policy = Agent(self.encoder, self.rssm.transition, self.action_model)
+
+        for i in range(test_count):
+            obs = self.env.reset()
+            done = False
+            total_reward = 0
+            frame = np.zeros((120, 160 + 20, 3), dtype=np.uint8)
+            frame[:, :160, :] = obs.transpose(1, 2, 0)
+            frames = [Image.fromarray(frame)]
+
+            while not done:
+                action = policy(obs, training=False)
+                collision = (
+                    self.cnn_collision_model(
+                        torch.as_tensor(
+                            preprocess_obs(obs), device=self.device
+                        ).unsqueeze(0)
+                    )
+                    .squeeze()
+                    .cpu()
+                    .numpy()
+                )
                 obs, reward, done, info = self.env.step(action)
 
                 total_reward += reward

@@ -275,3 +275,28 @@ class ActionModel(nn.Module):
         else:
             action = torch.tanh(mean)
         return action
+
+
+class CnnCollisionModel(nn.Module):
+    """
+    (3, 120, 160)の画像を(1024,)のベクトルに変換するエンコーダ
+    """
+
+    def __init__(self):
+        super(CnnCollisionModel, self).__init__()
+        self.cv1 = nn.Conv2d(3, 16, kernel_size=4, stride=2, padding=1)
+        self.cv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=1)
+        self.cv3 = nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1)
+        self.cv4 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
+        self.cv5 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
+        self.linear = nn.Linear(256 * 3 * 5, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, obs):
+        hidden = F.relu(self.cv1(obs))
+        hidden = F.relu(self.cv2(hidden))
+        hidden = F.relu(self.cv3(hidden))
+        hidden = F.relu(self.cv4(hidden))
+        hidden = F.relu(self.cv5(hidden))
+        collision = self.sigmoid(self.linear(hidden.reshape(hidden.size(0), -1)))
+        return collision
