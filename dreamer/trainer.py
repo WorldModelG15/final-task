@@ -42,7 +42,7 @@ class Trainer:
         # 確率的状態の次元と決定的状態（RNNの隠れ状態）の次元は一致しなくて良い
         self.encoder = Encoder().to(device)
         self.rssm = RSSM(self.state_dim, self.action_dim, self.rnn_hidden_dim, device)
-        self.cnn_collision_model = CnnCollisionModel()
+        self.cnn_collision_model = CnnCollisionModel().to(device)
         self.value_model = ValueModel(self.state_dim, self.rnn_hidden_dim).to(device)
         self.action_model = ActionModel(
             self.state_dim, self.rnn_hidden_dim, self.action_dim
