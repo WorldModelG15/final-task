@@ -1,8 +1,10 @@
 import itertools
 import os
+from random import random
 from collections import namedtuple
 from ctypes import POINTER
 from dataclasses import dataclass
+from random import random
 
 import sys
 
@@ -246,7 +248,7 @@ class Simulator(gym.Env):
         :param max_steps:
         :param draw_curve:
         :param draw_bbox:
-        :param domain_rand: If true, applies domain randomization
+        :param domain_rand: If true, applies domain  ization
         :param frame_rate:
         :param frame_skip:
         :param camera_width:
@@ -571,9 +573,10 @@ class Simulator(gym.Env):
         self.speed = 0.0
         if self.randomize_maps_on_reset:
             map_name = self.np_random.choice(self.map_names)
-            
+            self.map_name = map_name
             logger.info(f"Random map chosen: {map_name}")
-            print("random map:",map_name)
+            #print("random map:", map_name)
+            map_name = os.path.join(self.map_dir_abs_path, map_name + ".yaml")
             self._load_original_map(map_name)
 
         self.randomization_settings = self.randomizer.randomize(rng=self.np_random)
@@ -836,23 +839,23 @@ class Simulator(gym.Env):
         """
 
         # Store the map name
-        if os.path.exists(map_abs_path) and os.path.isfile(map_abs_path):
+        #if os.path.exists(map_abs_path) and os.path.isfile(map_abs_path):
             # if env is loaded using gym's register function, we need to extract the map name from the complete url
-            #map_name = os.path.basename(map_abs_path)
-            #map_name = self.np_random.choice(self.map_names)
-            map_name = map_abs_path + ".yaml"
-            assert map_name.endswith(".yaml")
-            map_name = ".".join(map_name.split(".")[:-1])
-            self.map_name = map_name
+            # map_name = os.path.basename(map_abs_path)
+            #map_name = map_name + ".yaml"
+            #assert map_name.endswith(".yaml")
+            #map_name = ".".join(map_name.split(".")[:-1])
+        #self.map_name = map_name
 
         # Get the full map file path
-        self.map_file_path = self.map_name
+        self.map_file_path = map_abs_path
 
         logger.debug(f'loading map file "{self.map_file_path}"')
+        print("loading map:",self.map_file_path)
 
         with open(self.map_file_path, "r") as f:
             self.map_data = yaml.load(f, Loader=yaml.Loader)
-
+        print('map_data:',self.map_data)
         self._interpret_map(self.map_data)
 
     def create_and_load_random_static_duckie_map(
@@ -861,28 +864,39 @@ class Simulator(gym.Env):
         base_map_name,
         created_map_dir_abs_path,
         created_map_name,
-        delete_created_map = False,
-        min_duck_num = 1,
-        max_duck_num = 10,
-        min_duck_height = 0.05,
-        max_duck_height = 0.10,
-        ):
+        delete_created_map=False,
+        min_duck_num=1,
+        max_duck_num=10,
+        min_duck_height=0.05,
+        max_duck_height=0.10,
+    ):
         # base_map_abs_path: ベースとなるマップファイルの絶対パス
         # ベースマップの走行可能エリアにmin_duck_num ~ max_duck_num個のduckをランダムに配置する
         os.makedirs(base_map_dir_abs_path, exist_ok=True)
         os.makedirs(created_map_dir_abs_path, exist_ok=True)
         base_map_abs_path = os.path.join(base_map_dir_abs_path, base_map_name + ".yaml")
-        created_map_abs_path = os.path.join(created_map_dir_abs_path, created_map_name + ".yaml")
+        created_map_abs_path = os.path.join(
+            created_map_dir_abs_path, created_map_name + ".yaml"
+        )
 
-
-
-        duck_num = random.choice(list(range(min_duck_num, max_duck_num+1)))
+        duck_num = random.choice(list(range(min_duck_num, max_duck_num + 1)))
         self._load_original_map(base_map_abs_path)
         self._interpret_map(self.map_data)
         selected_tiles = random.choices(self.drivable_tiles, k=duck_num)
-        duck_heights = random.choices(np.arange(min_duck_height, max_duck_height+0.01, 0.01).tolist(), k=duck_num)
-        randomness = ((np.random.random(len(selected_tiles)) * 6. - 3.) * 0.1).tolist()
-        duck_poss = [(tile["coords"][0]+0.5+randomness[i], tile["coords"][1]+0.5+randomness[i]) for i, tile in enumerate(selected_tiles)]
+        duck_heights = random.choices(
+            np.arange(min_duck_height, max_duck_height + 0.01, 0.01).tolist(),
+            k=duck_num,
+        )
+        randomness = (
+            (np.random.random(len(selected_tiles)) * 6.0 - 3.0) * 0.1
+        ).tolist()
+        duck_poss = [
+            (
+                tile["coords"][0] + 0.5 + randomness[i],
+                tile["coords"][1] + 0.5 + randomness[i],
+            )
+            for i, tile in enumerate(selected_tiles)
+        ]
         bf = open(base_map_abs_path, "r")
         base_map = yaml.load(bf, Loader=yaml.Loader)
         bf.close()
@@ -903,17 +917,35 @@ class Simulator(gym.Env):
         if delete_created_map:
             os.remove(created_map_abs_path)
 
+    def load_map_random(
+        self,
+        map_dir_abs_path,
+        map_name='',
+        Random=True,
+    ):
+        self.map_dir_abs_path = map_dir_abs_path
+        # map_abs_path = os.path.join(map_dir_abs_path, map_name + ".yaml")
+        if Random == True:
+            self.randomize_maps_on_reset = True
+            self.map_names = os.listdir(map_dir_abs_path)
+            self.map_names = [mapfile.replace(".yaml", "") for mapfile in self.map_names]
+            map_name = self.np_random.choice(self.map_names)
+        map_abs_path = os.path.join(map_dir_abs_path, map_name + ".yaml")
+        self._load_original_map(map_abs_path)
+        self._interpret_map(self.map_data)
+
     def load_map(
         self,
         map_dir_abs_path,
+        map_name='',
+        Random = False
         ):
-        #map_abs_path = os.path.join(map_dir_abs_path, map_name + ".yaml")
-        self.randomize_maps_on_reset = True
-        self.map_names = os.listdir(map_dir_abs_path)
-        self.map_names = [
-            mapfile.replace(".yaml", "") for mapfile in self.map_names
-        ]
-        map_name = self.np_random.choice(self.map_names)
+        self.map_dir_abs_path = map_dir_abs_path
+        if Random == True:
+            self.randomize_maps_on_reset = True
+            self.map_names = os.listdir(map_dir_abs_path)
+            self.map_names = [mapfile.replace(".yaml", "") for mapfile in self.map_names]
+            map_name = self.np_random.choice(self.map_names)
         map_abs_path = os.path.join(map_dir_abs_path, map_name + ".yaml")
         self._load_original_map(map_abs_path)
         self._interpret_map(self.map_data)

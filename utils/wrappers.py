@@ -106,7 +106,8 @@ class DtRewardWrapper(gym.RewardWrapper):
         #     return reward
         # if reward < 0:
         #     reward = 0
-
+        if reward == -1000:
+            reward = -1
         if reward < 0:
             reward *= 0.1
 
@@ -119,7 +120,7 @@ class ActionWrapper(gym.ActionWrapper):
         super(ActionWrapper, self).__init__(env)
 
     def action(self, action):
-        action_ = [action[0] * 0.8, action[1] * 0.8]
+        action_ = [action[0] * 0.8, action[1]]
         return action_
 
 
@@ -139,7 +140,10 @@ class OriginalWrapper(gym.Wrapper):
             done = True
         # バック走行ペナルティ
         if action[0] < 0 and action[1] < 0:
-            reward = -1.0
+            reward = -1.0 #-1
+        # 前進に報酬
+        if action[0] > 0 and action[1] > 0:
+            reward = 1.0
         return next_state, reward, done, info
 
     def reset(self):

@@ -3,7 +3,7 @@ import dataclasses
 
 @dataclasses.dataclass
 class DreamerConfig:
-    buffer_capacity: int = 200000
+    buffer_capacity: int = 300000 #500000  # colabのメモリに合わせて変えたほうがいいかも
 
     # state_dim
     state_dim: int = 30
@@ -17,9 +17,9 @@ class DreamerConfig:
 
     # other hyper params
     seed_episodes: int = 5
-    all_episodes: int = 300
+    all_episodes: int = 500
     test_interval: int = 10
-    model_save_interval: int = 100
+    model_save_interval: int = 50
     collect_interval: int = 50
 
     action_noise_var: float = 0.3
@@ -34,6 +34,6 @@ class DreamerConfig:
     free_nats: float = 3.0
 
     # 数ステップcollision判定
-    is_collision_regression: bool = False
+    is_collision_regression: bool = True
     extend_collision_step: int = 30
-    colliision_gamma: float = 0.95  # 回帰の時の減衰率
+    colliision_gamma: float = 0.97  # 回帰の時の減衰率

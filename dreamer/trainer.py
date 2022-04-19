@@ -200,7 +200,7 @@ class Trainer:
                 if self.is_collision_regression:
                     collision_value = 1.0
                     for i in range(
-                        len(experiences),
+                        len(experiences) - 1,
                         max(0, len(experiences) - self.extend_collision_steps),
                         -1,
                     ):
