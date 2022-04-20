@@ -635,3 +635,82 @@ class Trainer:
                 duration=40,
                 loop=0,
             )
+
+#基本的には方策＋数ステップ先の衝突を予測して危険なら停止します
+    def predict_stop(self,test_count,prediction_length):
+        policy = Agent(
+            self.encoder, self.rssm.transition, self.action_model, self.rssm.collision
+        )
+
+        for i in range(test_count):
+            obs = self.env.reset()
+            done = False
+            total_reward = 0
+            frame = np.zeros((120, 160 + 20, 3), dtype=np.uint8)
+            frame[:, :160, :] = obs.transpose(1, 2, 0)
+            frames = [Image.fromarray(frame)]
+            sim_steps = 500
+            #初期行動を決定
+            action = policy(obs, training=False)
+            #シミュレーション開始
+            for step in range(sim_steps):
+                
+
+
+
+                #シミュレーション更新
+                obs, reward, done, _ = self.env.step(action)
+
+                preprocessed_obs = torch.as_tensor(
+                    preprocess_obs(obs), device=self.device
+                ).unsqueeze(0)
+
+                with torch.no_grad():
+                    embedded_obs = self.encoder(preprocessed_obs)
+
+                rnn_hidden = policy.rnn_hidden
+                state = self.rssm.transition.posterior(rnn_hidden, embedded_obs).sample()
+                action, collision = policy.act_with_collision(obs, training=False)
+                #"""
+                #予測して行動を決定
+                for _ in range(prediction_length):
+                    action = torch.as_tensor(action, device=self.device).unsqueeze(0)
+                    # 潜在状態を観測と切り離して更新（policyの中の潜在状態には観測が反映されている）
+                    with torch.no_grad():
+                        #priorで潜在変数s_t+1(確率的)を取得,その為にrecurrentで状態h_t+1(決定的)を取得
+                        state_prior, rnn_hidden = self.rssm.transition.prior(
+                        self.rssm.transition.reccurent(state, action, rnn_hidden)
+                    )
+                    # s_t+1からサンプリング
+                    state = state_prior.sample()
+                    # s_t+1,h_t+1から観測画像を再構成
+                    predicted_obs = self.rssm.observation(state, rnn_hidden)
+                    predicted_obs = (predicted_obs.squeeze().cpu().detach().numpy() + 0.5) * 255
+                    action, collision = policy.act_with_collision(predicted_obs, training=False)
+                    
+                    # 予測したステップ数後において危険なら停止
+                    if step == prediction_length-1:
+                        print("collision risk:{}".format(collision))
+                        
+                        if collision > 0.3:
+                            action = 0*action
+                            print("collision!!")
+                        else:
+                            action, collision = policy.act_with_collision(obs, training=False)
+                            #action = policy(obs, training=False)
+                
+                
+
+                total_reward += reward    
+                frame[:, :160, :] = obs.transpose(1, 2, 0)
+                frame[:, 160:, 0] = (collision * 255).astype(int)
+                frames.append(Image.fromarray(frame))    
+
+            print("Total Reward:", total_reward)
+
+            frames[0].save(
+                os.path.join(self.gif_dir, "predictstop" + str(i) + ".gif"),
+                save_all=True,
+                append_images=frames[1:],
+                duration=40,
+            )
