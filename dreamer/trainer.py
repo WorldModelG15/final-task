@@ -805,11 +805,11 @@ class Trainer:
             )
 
 #基本的には方策＋数ステップ先の衝突を予測して危険なら停止します
-    def predict_stop(self,test_count,prediction_length):
+    def predict_stop(self,test_count,prediction_length,Threshold):
         policy = Agent(
             self.encoder, self.rssm.transition, self.action_model, self.rssm.collision
         )
-
+        sim_steps = 200
         for i in range(test_count):
             obs = self.env.reset()
             done = False
@@ -817,7 +817,10 @@ class Trainer:
             frame = np.zeros((120, 160 + 20, 3), dtype=np.uint8)
             frame[:, :160, :] = obs.transpose(1, 2, 0)
             frames = [Image.fromarray(frame)]
-            sim_steps = 500
+
+            col_frame = np.zeros((120, 360, 3), dtype=np.uint8)
+            col_frames = [Image.fromarray(col_frame)]            
+            col_frag = 0 #画像生成用の変数
             #初期行動を決定
             action = policy(obs, training=False)
             #シミュレーション開始
@@ -827,6 +830,7 @@ class Trainer:
 
 
                 #シミュレーション更新
+                print("step:{} action:{}".format(step,action))
                 obs, reward, done, _ = self.env.step(action)
 
                 preprocessed_obs = torch.as_tensor(
@@ -839,9 +843,10 @@ class Trainer:
                 rnn_hidden = policy.rnn_hidden
                 state = self.rssm.transition.posterior(rnn_hidden, embedded_obs).sample()
                 action, collision = policy.act_with_collision(obs, training=False)
+                Current_action, Current_collision = policy.act_with_collision(obs, training=False)
                 #"""
                 #予測して行動を決定
-                for _ in range(prediction_length):
+                for pred in range(prediction_length):
                     action = torch.as_tensor(action, device=self.device).unsqueeze(0)
                     # 潜在状態を観測と切り離して更新（policyの中の潜在状態には観測が反映されている）
                     with torch.no_grad():
@@ -856,23 +861,37 @@ class Trainer:
                     predicted_obs = (predicted_obs.squeeze().cpu().detach().numpy() + 0.5) * 255
                     action, collision = policy.act_with_collision(predicted_obs, training=False)
                     
+                    if collision > Threshold:
+                        action = 0*action
+                        print("collision!! pred_step:{}".format(pred))
+                        if col_frag == 0: # 最初の衝突予測時に画像保存
+                            real = obs.transpose(1, 2, 0)
+                            imagination = (
+                            predicted_obs#処理済みなので不要? .squeeze().cpu().numpy() + 0.5) * 255)
+                            .astype(np.uint8)
+                            .transpose(1, 2, 0)
+                        )
+                        col_frame[:, :160, :] = real
+                        col_frame[:, 160:180, 0] = (Current_collision * 255).astype(int)
+                        col_frame[:, 160+20:340, :] = imagination
+                        col_frame[:, 320+20:, 0] = (collision * 255).astype(int)
+                        col_frames.append(Image.fromarray(col_frame))                  
+                        col_frag = 1
+                        break
                     # 予測したステップ数後において危険なら停止
-                    if step == prediction_length-1:
-                        print("collision risk:{}".format(collision))
-                        
-                        if collision > 0.3:
-                            action = 0*action
-                            print("collision!!")
-                        else:
-                            action, collision = policy.act_with_collision(obs, training=False)
-                            #action = policy(obs, training=False)
-                
+                    if pred == prediction_length-1:
+                        print("collision risk:{}".format(collision))    
+                        action, collision = policy.act_with_collision(obs, training=False)
+                        #action = policy(obs, training=False)
+                    
                 
 
                 total_reward += reward    
                 frame[:, :160, :] = obs.transpose(1, 2, 0)
-                frame[:, 160:, 0] = (collision * 255).astype(int)
-                frames.append(Image.fromarray(frame))    
+                frame[:, 160:, 0] = (collision * 255).astype(int) # x軸160以降にredチャンネルで追加
+                frames.append(Image.fromarray(frame)) 
+                if done:
+                    break   
 
             print("Total Reward:", total_reward)
 
@@ -881,4 +900,8 @@ class Trainer:
                 save_all=True,
                 append_images=frames[1:],
                 duration=40,
+            )
+
+            col_frames[1].save(
+                os.path.join(self.gif_dir, "collision_compare" + str(i) + ".png"),
             )
