@@ -87,21 +87,30 @@ class ImgWrapper(gym.ObservationWrapper):
         return observation.transpose(2, 0, 1)
 
 
+# 2の報酬設計でloop_pedestriansだとそれなりに進んでいる（だいたいアヒルと衝突して終了）
 class DtRewardWrapper(gym.RewardWrapper):
     def __init__(self, env):
         super(DtRewardWrapper, self).__init__(env)
 
     def reward(self, reward):
+        # 1.default
         # if reward == -1000:
         #     reward = -10
         # elif reward > 0:
         #     reward += 10
         # else:
         #     reward += 4
-        if reward == -1000:
-            return reward
+
+        # 2.original_1
+        # if reward == -1000:
+        #     return reward
+        # if reward < 0:
+        #     reward = 0
+
+        if reward == -1000:  # 追加
+            reward = -1  # 追加
         if reward < 0:
-            reward = 0
+            reward *= 0.1
 
         return reward
 
@@ -112,14 +121,17 @@ class ActionWrapper(gym.ActionWrapper):
         super(ActionWrapper, self).__init__(env)
 
     def action(self, action):
-        action_ = [action[0] * 0.8, action[1]]
+        action_ = [
+            action[0] * 0.8,
+            action[1],
+        ]  # 両方0.8かけるとうまく曲がれなかったので曲がるために必要かも これだと左折が難しい？
         return action_
 
 
 # early stop learning
-class EarlyStopWrapper(gym.Wrapper):
+class OriginalWrapper(gym.Wrapper):
     def __init__(self, env):
-        super(EarlyStopWrapper, self).__init__(env)
+        super(OriginalWrapper, self).__init__(env)
         self.env = env
         self.total_steps = 0
         self.total_reward = 0
@@ -128,8 +140,14 @@ class EarlyStopWrapper(gym.Wrapper):
         next_state, reward, done, info = self.env.step(action)
         self.total_reward += reward
         self.total_steps += 1
-        if self.total_steps >= 3000:
+        if self.total_steps >= 2000:
             done = True
+        # バック走行ペナルティ
+        if action[0] < 0 and action[1] < 0:
+            reward = -1.0
+        # 前進時に報酬
+        if action[0] > 0 and action[1] > 0:  # 追加
+            reward = 1.0  # 追加
         return next_state, reward, done, info
 
     def reset(self):

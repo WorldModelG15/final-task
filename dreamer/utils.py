@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 class ReplayBuffer(object):
     """
     RNNを用いて訓練するのに適したリプレイバッファ
@@ -13,11 +14,12 @@ class ReplayBuffer(object):
         self.actions = np.zeros((capacity, action_dim), dtype=np.float32)
         self.rewards = np.zeros((capacity, 1), dtype=np.float32)
         self.done = np.zeros((capacity, 1), dtype=np.bool)
+        self.collisions = np.zeros((capacity, 1), dtype=np.float32)
 
         self.index = 0
         self.is_filled = False
 
-    def push(self, observation, action, reward, done):
+    def push(self, observation, action, reward, done, collision):
         """
         リプレイバッファに経験を追加する
         """
@@ -25,6 +27,7 @@ class ReplayBuffer(object):
         self.actions[self.index] = action
         self.rewards[self.index] = reward
         self.done[self.index] = done
+        self.collisions[self.index] = collision
 
         # indexは巡回し, 最も古い経験を上書きする
         if self.index == self.capacity - 1:
@@ -60,7 +63,17 @@ class ReplayBuffer(object):
             batch_size, chunk_length, 1
         )
         sampled_done = self.done[sampled_indexes].reshape(batch_size, chunk_length, 1)
-        return sampled_observations, sampled_actions, sampled_rewards, sampled_done
+        sampled_collision = self.collisions[sampled_indexes].reshape(
+            batch_size, chunk_length, 1
+        )
+
+        return (
+            sampled_observations,
+            sampled_actions,
+            sampled_rewards,
+            sampled_done,
+            sampled_collision,
+        )
 
     def __len__(self):
         return self.capacity if self.is_filled else self.index
