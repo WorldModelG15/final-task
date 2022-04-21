@@ -38,5 +38,4 @@ if __name__ == "__main__":
     trainer = Trainer(env, device, config, False)
     trainer.load_models("/root/mnt/final-task/models/20220420030645/episode_0300")
 
-    trainer.view_with_collision_prediction(10)
     trainer.view_with_cnn_collision_prediction(10)

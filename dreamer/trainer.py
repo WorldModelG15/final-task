@@ -584,6 +584,92 @@ class Trainer:
         )
 
     # 訓練した世界モデルとpolicyで環境とインタラクションしている様子をgifで保存します
+    def calc_good_episodes(self, episode_count):
+        policy = Agent(
+            self.encoder, self.rssm.transition, self.action_model, self.rssm.collision
+        )
+
+        collision_episode_count = 0
+        ok_count = 0
+        ng_count = 0
+
+        while collision_episode_count < episode_count:
+            obs = self.env.reset()
+            policy.reset()
+            done = False
+            total_reward = 0
+            collisions = []
+            is_collision_episode = False
+
+            while not done:
+                action, pred_collision = policy.act_with_collision(obs, training=False)
+                collisions.append(pred_collision)
+
+                # 衝突判定(衝突の１ステップ後にエピソード終了する点に注意)
+                agent_corners = get_agent_corners(self.env.cur_pos, self.env.cur_angle)
+                collision = self.env.collision(agent_corners)
+
+                if collision:
+                    is_collision_episode = True
+                    collision_episode_count += 1
+                    ok = False
+                    ### 正判定
+                    for c in collisions[-10:]:
+                        if c > 0.5:
+                            ok = True
+                    if ok:
+                        ok_count += 1
+
+                    ### 誤判定
+                    ng = False
+                    for c in collisions[:-50]:
+                        if c > 0.5:
+                            ng = True
+                    if ng:
+                        ng_count += 1
+                    break
+
+                obs, reward, done, info = self.env.step(action)
+                total_reward += reward
+
+            print("Episode:", collision_episode_count)
+
+        print("Collision Episode Count: ", collision_episode_count)
+        print("OK Episode Count: ", ok_count)
+        print("NG Episode Count: ", ng_count)
+
+    # 訓練した世界モデルとpolicyで環境とインタラクションしている様子をgifで保存します
+    def view(self, test_count):
+        policy = Agent(
+            self.encoder, self.rssm.transition, self.action_model, self.rssm.collision
+        )
+
+        for i in range(test_count):
+            obs = self.env.reset()
+            policy.reset()
+            done = False
+            total_reward = 0
+            frame = np.zeros((120, 160, 3), dtype=np.uint8)
+            frame = obs.transpose(1, 2, 0)
+            frames = [Image.fromarray(frame)]
+
+            while not done:
+                action, collision = policy.act_with_collision(obs, training=False)
+                obs, reward, done, info = self.env.step(action)
+
+                total_reward += reward
+                frame = obs.transpose(1, 2, 0)
+                frames.append(Image.fromarray(frame))
+
+            print("Total Reward:", total_reward)
+            frames[0].save(
+                os.path.join(self.gif_dir, "view" + str(i) + ".gif"),
+                save_all=True,
+                append_images=frames[1:],
+                duration=40,
+            )
+
+    # 訓練した世界モデルとpolicyで環境とインタラクションしている様子をgifで保存します
     # 行動選択と同時に'世界モデルによる'衝突予測を行い、一緒に可視化します
     def view_with_collision_prediction(self, test_count):
         policy = Agent(
@@ -592,6 +678,7 @@ class Trainer:
 
         for i in range(test_count):
             obs = self.env.reset()
+            policy.reset()
             done = False
             total_reward = 0
             frame = np.zeros((120, 160 + 20, 3), dtype=np.uint8)
