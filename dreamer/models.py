@@ -279,7 +279,7 @@ class ActionModel(nn.Module):
 
 class CnnCollisionModel(nn.Module):
     """
-    (3, 120, 160)の画像を(1024,)のベクトルに変換するエンコーダ
+    (3, 120, 160)の画像からCollision予測値を出力
     """
 
     def __init__(self):
@@ -288,8 +288,8 @@ class CnnCollisionModel(nn.Module):
         self.cv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=1)
         self.cv3 = nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1)
         self.cv4 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
-        self.cv5 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
-        self.linear = nn.Linear(256 * 3 * 5, 1)
+        self.fc1 = nn.Linear(128 * 7 * 10, 512)
+        self.fc2 = nn.Linear(512, 1)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, obs):
@@ -297,6 +297,7 @@ class CnnCollisionModel(nn.Module):
         hidden = F.relu(self.cv2(hidden))
         hidden = F.relu(self.cv3(hidden))
         hidden = F.relu(self.cv4(hidden))
-        hidden = F.relu(self.cv5(hidden))
-        collision = self.sigmoid(self.linear(hidden.reshape(hidden.size(0), -1)))
+        hidden = self.fc1(hidden.reshape(hidden.size(0), -1))
+        hidden = self.fc2(hidden)
+        collision = self.sigmoid(hidden)
         return collision

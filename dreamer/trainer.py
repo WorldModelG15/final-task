@@ -353,8 +353,8 @@ class Trainer:
 
                 ### CNN Collision Model の更新
 
-                observations = observations.detach()
-                collisions = collisions.detach()
+                # observations = observations.detach()
+                # collisions = collisions.detach()
                 self.cnn_collision_model_optimizer.zero_grad()
                 cnn_predicted_collisions = self.cnn_collision_model(
                     observations.reshape(-1, *self.env.observation_space.shape)
@@ -630,16 +630,17 @@ class Trainer:
 
             while not done:
                 action = policy(obs, training=False)
-                collision = (
-                    self.cnn_collision_model(
-                        torch.as_tensor(
-                            preprocess_obs(obs), device=self.device
-                        ).unsqueeze(0)
+                with torch.no_grad():
+                    collision = (
+                        self.cnn_collision_model(
+                            torch.as_tensor(
+                                preprocess_obs(obs), device=self.device
+                            ).unsqueeze(0)
+                        )
+                        .squeeze()
+                        .cpu()
+                        .numpy()
                     )
-                    .squeeze()
-                    .cpu()
-                    .numpy()
-                )
                 obs, reward, done, info = self.env.step(action)
 
                 total_reward += reward
@@ -649,7 +650,7 @@ class Trainer:
 
             print("Total Reward:", total_reward)
             frames[0].save(
-                os.path.join(self.gif_dir, "test" + str(i) + ".gif"),
+                os.path.join(self.gif_dir, "test_cnn" + str(i) + ".gif"),
                 save_all=True,
                 append_images=frames[1:],
                 duration=40,
