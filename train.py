@@ -14,16 +14,19 @@ if __name__ == "__main__":
     ### デフォルトのマップで学習する場合
     env = launch_env(
         map_name="loop_pedestrians"
-    )  # randomize_maps_on_reset=True でマップランダム化, enable_newly_visited_tile_reward=True でタイル報酬の有効化です
+    )  # enable_newly_visited_tile_reward=True でタイル報酬の有効化です
 
     ### オリジナルのマップで学習する場合
-    # map_dir_abs_path = (
-    #     "/root/mnt/final-task/gym-duckietown/created_maps/"  # ここは環境によって変えます
-    # )
+    map_dir_abs_path = (
+        "/root/mnt/final-task/gym-duckietown/created_maps/"  # ここは環境によって変えます
+    )
+    ### 特定のひとつのマップで学習
     # map_name = "zigzag"  # 'zigzag','oneloop','three_statics','loop_pedestrian'から選択です
     # env = launch_env(
     #     is_original_map=True, map_abs_path=map_dir_abs_path + map_name + ".yaml"
     # )
+    ### ディレクトリ以下のすべてのマップで学習
+    env.load_map(map_dir_abs_path=map_dir_abs_path, Random=True)
 
     env = ResizeWrapper(env)
     env = ImgWrapper(env)  # to make the images from 120x160x3 into 3x120x160

@@ -35,5 +35,5 @@ class DreamerConfig:
 
     # 数ステップcollision判定
     is_collision_regression: bool = True
-    extend_collision_step: int = 50
+    extend_collision_step: int = 30
     colliision_gamma: float = 0.98  # 回帰の時の減衰率
